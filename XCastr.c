@@ -16,6 +16,8 @@ int main(int argc, char *argv[]) {
     XMapWindow(display, window);
     XSync(display, 0);
 
+
+    // TODO: make window translucent
     // TODO: set window floating bottom righ of screen
     // TODO: render text with custom font
     // TODO: dynamically change window size by text

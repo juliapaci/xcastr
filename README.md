@@ -1,2 +1,2 @@
-# xcastr
-Linux port of [keycastr](https://github.com/keycastr/keycastr) in x
+# XCastr
+X port of [KeyCastr](https://github.com/keycastr/keycastr)

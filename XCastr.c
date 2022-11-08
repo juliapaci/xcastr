@@ -35,7 +35,14 @@ int main(int argc, char *argv[]) {
     property[0] = XInternAtom(display, "_NET_WM_STATE_ABOVE", 0);
     XChangeProperty(display, window, property[0], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 1L);
 
-    // TODO: make window translucent
+    // make window transparent
+    int alpha = 200;
+    alpha = alpha | alpha << 8 | alpha << 16 | alpha << 24;
+
+    Atom windowOpacity = XInternAtom(display, "_NET_WM_WINDOW_OPACITY", 0);
+    XChangeProperty(display, window, windowOpacity, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &alpha, 1);
+
+
     // TODO: render text with custom font
     // TODO: dynamically change window size by text
     // TODO: fade window when silent after a while

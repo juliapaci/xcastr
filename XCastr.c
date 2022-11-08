@@ -9,7 +9,10 @@
 
 int main(int argc, char *argv[]) {
     Display *display = XOpenDisplay(NULL);
-    Window window = XCreateSimpleWindow(display, XDefaultRootWindow(display), 1920, 1080, 200, 200, 0, 0, 0), root = XDefaultRootWindow(display);
+
+    int backgroundColour = 0;
+    Window window = XCreateSimpleWindow(display, XDefaultRootWindow(display), 1920, 1080, 200, 200, 0, 0, backgroundColour), root = XDefaultRootWindow(display);
+
     XWindowAttributes rootAttributes, windowAttributes;
     windowAttributes.override_redirect = 1;
 

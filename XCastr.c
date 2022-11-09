@@ -5,21 +5,45 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <unistd.h>
-
 int main(int argc, char *argv[]) {
     Display *display = XOpenDisplay(NULL);
+    // int visual = DefaultVisual(display, screen);
+    Window root = XDefaultRootWindow(display), window;
 
-    int backgroundColour = 0;
-    Window window = XCreateSimpleWindow(display, XDefaultRootWindow(display), 1920, 1080, 200, 200, 0, 0, backgroundColour), root = XDefaultRootWindow(display);
+    XVisualInfo vinfo;
+    XMatchVisualInfo(display, DefaultScreen(display), 32, TrueColor, &vinfo);
+    Colormap colourmap = XCreateColormap(display, root, vinfo.visual, AllocNone);
+    // XColor backgroundColour = createXColorFromRGBA(0, 0, 0, 0);
+
 
     XWindowAttributes rootAttributes, windowAttributes;
-    windowAttributes.override_redirect = 1;
 
     Atom property[2];
 
+
+
+
     XGetWindowAttributes(display, root, &rootAttributes); // get root attributes for resolution (to set window at corner of screen)
-    XGetWindowAttributes(display, window, &windowAttributes); // get window attributes
+
+    XSetWindowAttributes setWindowAttributes;
+    setWindowAttributes.override_redirect = 1;
+    setWindowAttributes.background_pixmap = None;
+    setWindowAttributes.background_pixel = "0x00FF000000";
+    setWindowAttributes.border_pixel=0;
+    setWindowAttributes.win_gravity=NorthWestGravity;
+    setWindowAttributes.bit_gravity=ForgetGravity;
+    setWindowAttributes.save_under=1;
+    setWindowAttributes.colormap = colourmap;
+
+
+    unsigned long m = CWColormap | CWBorderPixel | CWBackPixel | CWEventMask | CWWinGravity|CWBitGravity | CWSaveUnder | CWDontPropagate | CWOverrideRedirect;
+
+    window = XCreateWindow(display, root, rootAttributes.x, rootAttributes.y, 200, 200, 0, vinfo.depth, InputOutput, vinfo.visual, m, &setWindowAttributes);
+
+    // XGetWindowAttributes(display, window, &windowAttributes); // get window attributes
+
+
+
 
     // Set window name
     XStoreName(display, window, "XCastr");
@@ -27,16 +51,24 @@ int main(int argc, char *argv[]) {
     XSetClassHint(display, window, &hint);
 
 
-    // TODO: set window floating bottom righ of screen
 
-    property[2] = XInternAtom(display, "_NET_WM_WINDOW_TYPE", 0);
-    property[1] = XInternAtom(display, "_NET_WM_WINDOW_TYPE_NOTIFICATION", 0);
+    // Set window position to bottom right of screen
+    // XTranslateCoordinates(display, window, root, 0, 0, (unsigned int *) rootAttributes.width, (unsigned int *) rootAttributes.height, window);
+
+
+
+
+
+    // TODO: set window floating
+    property[1] = XInternAtom(display, "_NET_WM_WINDOW_TYPE", 0);
     property[0] = XInternAtom(display, "_NET_WM_WINDOW_TYPE_UTILITY", 0);
     XChangeProperty(display, window, property[0], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 2L);
 
     property[1] = XInternAtom(display, "_NET_WM_STATE", 0);
     property[0] = XInternAtom(display, "_NET_WM_STATE_ABOVE", 0);
     XChangeProperty(display, window, property[0], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 1L);
+
+
 
     // make window transparent
     int alpha = 200;
@@ -47,6 +79,9 @@ int main(int argc, char *argv[]) {
 
 
     // TODO: render text with custom font
+    // TODO: set window backgroudn colour
+    // TODO: remove decorations
+    // TODO: Check if focus window asks for password and if it does then replace the characters with "*"
     // TODO: dynamically change window size by text
     // TODO: fade window when silent after a while
     // TODO: detect key presses from root window
@@ -55,9 +90,9 @@ int main(int argc, char *argv[]) {
     // Display window
     XMapWindow(display, window);
     XSync(display, 0);
+    // XFlush(display);
 
-    sleep(10);
-
+    XUnmapWindow(display, window);
     XDestroyWindow(display, window);
     XCloseDisplay(display);
     return 0;

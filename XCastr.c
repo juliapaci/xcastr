@@ -5,6 +5,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <unistd.h>
+
+#define BASIC_EVENT_MASK (StructureNotifyMask|ExposureMask|PropertyChangeMask|EnterWindowMask|LeaveWindowMask|KeyPressMask|KeyReleaseMask|KeymapStateMask)
+#define NOT_PROPAGATE_MASK (KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|PointerMotionMask|ButtonMotionMask)
+
 int main(int argc, char *argv[]) {
     Display *display = XOpenDisplay(NULL);
     // int visual = DefaultVisual(display, screen);
@@ -33,6 +38,8 @@ int main(int argc, char *argv[]) {
     setWindowAttributes.win_gravity=NorthWestGravity;
     setWindowAttributes.bit_gravity=ForgetGravity;
     setWindowAttributes.save_under=1;
+    setWindowAttributes.event_mask=BASIC_EVENT_MASK;
+    setWindowAttributes.do_not_propagate_mask=NOT_PROPAGATE_MASK;
     setWindowAttributes.colormap = colourmap;
 
 
@@ -91,6 +98,8 @@ int main(int argc, char *argv[]) {
     XMapWindow(display, window);
     XSync(display, 0);
     // XFlush(display);
+
+    sleep(10);
 
     XUnmapWindow(display, window);
     XDestroyWindow(display, window);

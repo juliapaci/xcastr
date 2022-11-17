@@ -1,5 +1,5 @@
 # Compiler flags
-CFLAGS = -lX11 -g -Wall
+CFLAGS = -lX11 -lm -lXfixes -g -Wall
 
 # Build Target
 TARGET = XCastr

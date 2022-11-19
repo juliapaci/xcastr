@@ -6,3 +6,6 @@ TARGET = XCastr
 
 $(TARGET): $(TARGET).c
 	gcc $(CFLAGS) $(TARGET).c -o $(TARGET)
+
+clean:
+	rm $(TARGET) $(objects)

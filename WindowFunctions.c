@@ -1,13 +1,13 @@
+#include <X11/Xatom.h>
 #include <X11/extensions/shape.h>
 #include <X11/extensions/Xfixes.h>
-#include <X11/Xatom.h>
 
 #define BASIC_EVENT_MASK (StructureNotifyMask|ExposureMask|PropertyChangeMask|EnterWindowMask|LeaveWindowMask|KeyPressMask|KeyReleaseMask|KeymapStateMask)
 #define NOT_PROPAGATE_MASK (KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|PointerMotionMask|ButtonMotionMask)
 
 typedef enum { false, true } bool;
 
-Window CreateWindow(Display *display, Window root, Colormap colourmap, XWindowAttributes rootAttr, XVisualInfo vInfo, int background) {
+Window CreateWindow(Display *display, Window root, Colormap colourmap, XWindowAttributes rootAttr, XVisualInfo vInfo, int background, int width, int height) {
 
     XSetWindowAttributes setWindowAttributes;
     setWindowAttributes.override_redirect = 1;
@@ -24,7 +24,8 @@ Window CreateWindow(Display *display, Window root, Colormap colourmap, XWindowAt
 
     unsigned long mask = CWColormap | CWBorderPixel | CWBackPixel | CWEventMask | CWWinGravity | CWBitGravity | CWSaveUnder | CWDontPropagate | CWOverrideRedirect;
 
-    return XCreateWindow(display, root, rootAttr.x, rootAttr.y, 200, 200, 0, vInfo.depth, InputOutput, vInfo.visual, mask, &setWindowAttributes);
+    // TODO: must consider window manager gaps minus from root width, height
+    return XCreateWindow(display, root, rootAttr.width-width, rootAttr.height-height, width, height, 0, vInfo.depth, InputOutput, vInfo.visual, mask, &setWindowAttributes);
 
 }
 

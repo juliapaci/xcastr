@@ -15,33 +15,30 @@ int main(int argc, char *argv[]) {
     bool interactable = false;
     int background = 0x00FF000000;
     int alpha = 200;
+    int width = 200, height = 200;
 
 
     Display *display = XOpenDisplay(NULL);
     Window root = XDefaultRootWindow(display), window;
+    XWindowAttributes rootAttributes, windowAttributes;
 
+    // window args
     XVisualInfo visualInfo;
     XMatchVisualInfo(display, DefaultScreen(display), 32, TrueColor, &visualInfo);
     Colormap colourmap = XCreateColormap(display, root, visualInfo.visual, AllocNone);
 
-    XWindowAttributes rootAttributes, windowAttributes;
 
-    Atom property[2];
-
-
-
-
-    XGetWindowAttributes(display, root, &rootAttributes); // get root attributes for resolution (to set window at corner of screen)
+    // TODO: try wm specs (_NET_WM_STRUT, _NET_WORKAREA) maybe works
+    // get root attributes for resolution (to set window at corner of screen)
+    XGetWindowAttributes(display, root, &rootAttributes);
 
     // create window
-    window = CreateWindow(display, root, colourmap, rootAttributes, visualInfo, background);
+    window = CreateWindow(display, root, colourmap, rootAttributes, visualInfo, background, width, height);
 
     XGetWindowAttributes(display, window, &windowAttributes); // get window attributes
 
     if(!interactable)
         WindowInteractable(display, window);
-
-
 
     // Set window name
     XStoreName(display, window, "XCastr");
@@ -49,14 +46,11 @@ int main(int argc, char *argv[]) {
     XSetClassHint(display, window, &hint);
 
 
-
-    // Set window position to bottom right of screen
-    // XTranslateCoordinates(display, window, root, 0, 0, (int *) rootAttributes.width, (unsigned int *) rootAttributes.height, window);
+    Atom property[2];
 
     property[1] = XInternAtom(display, "_NET_WM_WINDOW_TYPE", 0);
     property[0] = XInternAtom(display, "_NET_WM_WINDOW_TYPE_UTILITY", 0);
     XChangeProperty(display, window, property[0], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 2L);
-
     property[1] = XInternAtom(display, "_NET_WM_STATE", 0);
     property[0] = XInternAtom(display, "_NET_WM_STATE_ABOVE", 0);
     XChangeProperty(display, window, property[0], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 1L);

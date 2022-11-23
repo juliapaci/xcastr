@@ -9,7 +9,7 @@ BIN = /usr/bin
 
 all: $(TARGET)
 
-$(TARGET):
+$(TARGET): $(TARGET).c
 	gcc $(CFLAGS) $(TARGET).c -o $(TARGET)
 
 clean:

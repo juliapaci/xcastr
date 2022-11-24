@@ -7,15 +7,13 @@ TARGET = XCastr
 # Binary location
 BIN = /usr/bin
 
-all: $(TARGET)
-
 $(TARGET): $(TARGET).c
 	gcc $(CFLAGS) $(TARGET).c -o $(TARGET)
 
 clean:
 	rm -f $(TARGET) $(objects)
 
-install: all
+install: $(TARGET)
 	mkdir -p $(BIN)
 	cp -f $(TARGET) $(BIN)
 	chmod 775 $(BIN)/$(TARGET)

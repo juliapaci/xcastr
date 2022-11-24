@@ -29,6 +29,17 @@ Window CreateWindow(Display *display, Window root, Colormap colourmap, XWindowAt
 
 }
 
+bool WindowClosed(Display *display, Window window) {
+    Atom wm_protocols = XInternAtom(display, "WM_PROTOCOLS", 0);
+    Atom wm_delete_window = XInternAtom(display, "WM_DELETE_WINDOW", 0);
+    XSetWMProtocols(display, window, &wm_delete_window, 1);
+
+    XEvent event;
+    if(XCheckTypedWindowEvent(display, window, ClientMessage, &event) && event.xclient.message_type == wm_protocols && event.xclient.data.l[0] == wm_delete_window)
+        return 1;
+    return 0;
+}
+
 void RemoveWindow(Display *display, Window window) {
     XUnmapWindow(display, window);
     XDestroyWindow(display, window);

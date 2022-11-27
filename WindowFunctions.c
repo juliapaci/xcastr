@@ -43,25 +43,28 @@ Window CreateWindow(Display *display, Window root, Colormap colourmap, XWindowAt
     property[0] = XInternAtom(display, "_NET_WM_STATE_ABOVE", 0);
     XChangeProperty(display, window, property[0], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 1L);
 
+    return window;
+}
+
+void ShapeWindow(Display *display, Window window, XWindowAttributes windowAttr) {
     // shape for non rectangular window
     int shapeEventBase, shapeErrorBase;
-    int pixmap = XCreatePixmap(display, window, width, height, 1);
+    int pixmap = XCreatePixmap(display, window, windowAttr.width, windowAttr.height, 1);
     if(!XShapeQueryExtension(display, &shapeEventBase, &shapeErrorBase))
-        return window; // printf("Shape library not found");
+        return; // printf("Shape library not found");
+
 
     XGCValues xgcv;
 
     GC gc = XCreateGC(display, pixmap, 0, &xgcv);
 
     XSetForeground (display, gc, 0);
-    XFillRectangle (display, pixmap, gc, 0, 0, width, height);
+    XFillRectangle (display, pixmap, gc, 0, 0, windowAttr.width, windowAttr.height);
     XSetForeground (display, gc, 1);
-    XFillArc(display, pixmap, gc, width/2, height/2, width, height, 0, 360 * 64);
+    XFillArc(display, pixmap, gc, windowAttr.width/2, windowAttr.height/2, windowAttr.width, windowAttr.height, 0, 360 * 64);
 
     XShapeCombineMask(display, window, ShapeBounding, 0, 0, pixmap, ShapeSet);
     // XFreePixmap(display, pixmap);
-
-    return window;
 }
 
 bool WindowClosed(Display *display, Window window) {

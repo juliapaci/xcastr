@@ -15,10 +15,11 @@ int main(int argc, char *argv[]) {
     int background = 0x00FF000000; // background colour of window
     int width = 200, height = 200; // height and width of window
     int alpha = 200; // go for 0 - 255
+    unsigned int update = 10000; // basically how laggy the window is (lower is more cpu intensive)
 
     Display *display = XOpenDisplay(NULL);
     Window root = XDefaultRootWindow(display), window;
-    XWindowAttributes rootAttributes;
+    XWindowAttributes rootAttributes, windowAttributes;
 
     // window args
     XVisualInfo visualInfo;
@@ -33,6 +34,10 @@ int main(int argc, char *argv[]) {
     // create window
     window = CreateWindow(display, root, colourmap, rootAttributes, visualInfo, background, width, height);
 
+    // window attribuets for size (for shape)
+    XGetWindowAttributes(display, window, &windowAttributes);
+    ShapeWindow(display, window, windowAttributes);
+
     if(!interactable)
         WindowIntractable(display, window);
 
@@ -43,7 +48,7 @@ int main(int argc, char *argv[]) {
     // make window transparent
     TransparentWindow(display, window, alpha);
 
-    // TODO: update shape as resized
+    // TODO: find a better way to update the window
     // TODO: sticky window
     // TODO: not Interactable should be able to move and resizew the window
     // TODO: round window (https://www.x.org/docs/Xext/shapelib.pdf)
@@ -62,9 +67,12 @@ int main(int argc, char *argv[]) {
 
     // keep window open until manually closed
     // TODO: Why does it take longer to remove window depending on how big it is? (lower sleep less time but it shouldnt eb effected by size?)
-    while(!WindowClosed(display, window))
+    while(!WindowClosed(display, window)) {
         // usleep is depricated use nanosleep?
-        usleep(100000);
+        usleep(update);
+        XGetWindowAttributes(display, window, &windowAttributes);
+        ShapeWindow(display, window, windowAttributes);
+    }
 
     XUnmapWindow(display, window);
     XDestroyWindow(display, window);

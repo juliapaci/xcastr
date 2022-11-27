@@ -21,12 +21,47 @@ Window CreateWindow(Display *display, Window root, Colormap colourmap, XWindowAt
     setWindowAttributes.do_not_propagate_mask = NOT_PROPAGATE_MASK;
     setWindowAttributes.colormap = colourmap;
 
-
     unsigned long mask = CWColormap | CWBorderPixel | CWBackPixel | CWEventMask | CWWinGravity | CWBitGravity | CWSaveUnder | CWDontPropagate | CWOverrideRedirect;
 
     // TODO: must consider window manager gaps minus from root width, height
-    return XCreateWindow(display, root, rootAttr.width-width, rootAttr.height-height, width, height, 0, vInfo.depth, InputOutput, vInfo.visual, mask, &setWindowAttributes);
+    Window window = XCreateWindow(display, root, rootAttr.width-width, rootAttr.height-height, width, height, 0, vInfo.depth, InputOutput, vInfo.visual, mask, &setWindowAttributes);
 
+    setWindowAttributes.override_redirect = 0;
+    XChangeWindowAttributes(display, window, CWOverrideRedirect, &setWindowAttributes);
+
+    // Set window name
+    XStoreName(display, window, "XCastr");
+    XClassHint hint = {  "xcastr", "XCastr"  };
+    XSetClassHint(display, window, &hint);
+
+    // wm specs
+    Atom property[2];
+    property[1] = XInternAtom(display, "_NET_WM_WINDOW_TYPE", 0);
+    property[0] = XInternAtom(display, "_NET_WM_WINDOW_TYPE_UTILITY", 0);
+    XChangeProperty(display, window, property[0], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 2L);
+    property[1] = XInternAtom(display, "_NET_WM_STATE", 0);
+    property[0] = XInternAtom(display, "_NET_WM_STATE_ABOVE", 0);
+    XChangeProperty(display, window, property[0], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 1L);
+
+    // shape for non rectangular window
+    int shapeEventBase, shapeErrorBase;
+    int pixmap = XCreatePixmap(display, window, width, height, 1);
+    if(!XShapeQueryExtension(display, &shapeEventBase, &shapeErrorBase))
+        return window; // printf("Shape library not found");
+
+    XGCValues xgcv;
+
+    GC gc = XCreateGC(display, pixmap, 0, &xgcv);
+
+    XSetForeground (display, gc, 0);
+    XFillRectangle (display, pixmap, gc, 0, 0, width, height);
+    XSetForeground (display, gc, 1);
+    XFillArc(display, pixmap, gc, width/2, height/2, width, height, 0, 360 * 64);
+
+    XShapeCombineMask(display, window, ShapeBounding, 0, 0, pixmap, ShapeSet);
+    // XFreePixmap(display, pixmap);
+
+    return window;
 }
 
 bool WindowClosed(Display *display, Window window) {
@@ -40,16 +75,11 @@ bool WindowClosed(Display *display, Window window) {
     return 0;
 }
 
-void RemoveWindow(Display *display, Window window) {
-    XUnmapWindow(display, window);
-    XDestroyWindow(display, window);
-    XCloseDisplay(display);
-}
-
-void WindowInteractable(Display *display, Window window) {
+void WindowIntractable(Display *display, Window window) {
+    // TODO: Interactable windows should be able to be managed, moved resized, etc. and only be able to pass input through also should be sticky
     XserverRegion region = XFixesCreateRegion(display, NULL, 0);
-    XFixesSetWindowShapeRegion (display, window, ShapeInput, 0, 0, region);
-    XFixesDestroyRegion (display, region);
+    XFixesSetWindowShapeRegion(display, window, ShapeInput, 0, 0, region);
+    XFixesDestroyRegion(display, region);
 }
 
 void TransparentWindow(Display *display, Window window, int alpha) {

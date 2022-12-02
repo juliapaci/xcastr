@@ -10,7 +10,6 @@ typedef enum { false, true } bool;
 Window CreateWindow(Display *display, Window root, Colormap colourmap, XWindowAttributes rootAttr, XVisualInfo vInfo, int background, int width, int height) {
 
     XSetWindowAttributes setWindowAttributes;
-    setWindowAttributes.override_redirect = 1;
     setWindowAttributes.background_pixmap = None;
     setWindowAttributes.background_pixel = background;
     setWindowAttributes.win_gravity = NorthWestGravity;
@@ -23,11 +22,8 @@ Window CreateWindow(Display *display, Window root, Colormap colourmap, XWindowAt
 
     unsigned long mask = CWColormap | CWBorderPixel | CWBackPixel | CWEventMask | CWWinGravity | CWBitGravity | CWSaveUnder | CWDontPropagate | CWOverrideRedirect;
 
-    // TODO: must consider window manager gaps minus from root width, height
+    // TODO: must consider window manager gaps minus from root width, heigh. also border from windowAttributes.border_width
     Window window = XCreateWindow(display, root, rootAttr.width-width, rootAttr.height-height, width, height, 0, vInfo.depth, InputOutput, vInfo.visual, mask, &setWindowAttributes);
-
-    setWindowAttributes.override_redirect = 0;
-    XChangeWindowAttributes(display, window, CWOverrideRedirect, &setWindowAttributes);
 
     // Set window name
     XStoreName(display, window, "XCastr");
@@ -35,24 +31,30 @@ Window CreateWindow(Display *display, Window root, Colormap colourmap, XWindowAt
     XSetClassHint(display, window, &hint);
 
     // wm specs
-    Atom property[2];
-    property[1] = XInternAtom(display, "_NET_WM_WINDOW_TYPE", 0);
-    property[0] = XInternAtom(display, "_NET_WM_WINDOW_TYPE_UTILITY", 0);
+    Atom property[3];
+    property[0] = XInternAtom(display, "_NET_WM_WINDOW_TYPE", 0);
+    property[1] = XInternAtom(display, "_NET_WM_WINDOW_TYPE_UTILITY", 0);
     XChangeProperty(display, window, property[0], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 2L);
-    property[1] = XInternAtom(display, "_NET_WM_STATE", 0);
-    property[0] = XInternAtom(display, "_NET_WM_STATE_ABOVE", 0);
-    XChangeProperty(display, window, property[0], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 1L);
+    property[0] = XInternAtom(display, "_NET_WM_STATE", 0);
+    property[1] = XInternAtom(display, "_NET_WM_STATE_ABOVE", 0);
+    property[2] = XInternAtom(display, "_NET_WM_STATE_STICKY", 0);
+    XChangeProperty(display, window, property[0], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 3L);
+
+    // TODO: try to raise the stacking order to be ontop of floating windows
+    XSetTransientForHint(display, window, window);
+    // XRaiseWindow(display, window);
+
 
     return window;
 }
 
-void ShapeWindow(Display *display, Window window, XWindowAttributes windowAttr) {
+void ShapeWindow(Display *display, Window window, XWindowAttributes windowAttr, int angle, int angle2) {
     // shape for non rectangular window
     int shapeEventBase, shapeErrorBase;
-    int pixmap = XCreatePixmap(display, window, windowAttr.width, windowAttr.height, 1);
     if(!XShapeQueryExtension(display, &shapeEventBase, &shapeErrorBase))
         return; // printf("Shape library not found");
 
+    int pixmap = XCreatePixmap(display, window, windowAttr.width, windowAttr.height, 1);
 
     XGCValues xgcv;
 
@@ -61,10 +63,11 @@ void ShapeWindow(Display *display, Window window, XWindowAttributes windowAttr) 
     XSetForeground (display, gc, 0);
     XFillRectangle (display, pixmap, gc, 0, 0, windowAttr.width, windowAttr.height);
     XSetForeground (display, gc, 1);
-    XFillArc(display, pixmap, gc, windowAttr.width/2, windowAttr.height/2, windowAttr.width, windowAttr.height, 0, 360 * 64);
+    XFillArc(display, pixmap, gc, 0, 0, windowAttr.width, windowAttr.height, 0, angle2);
 
-    XShapeCombineMask(display, window, ShapeBounding, 0, 0, pixmap, ShapeSet);
-    // XFreePixmap(display, pixmap);
+    XShapeCombineMask(display, window, ShapeBounding, -windowAttr.border_width, -windowAttr.border_width, pixmap, ShapeSet);
+    XShapeCombineMask(display, window, ShapeClip, 0, 0, pixmap, ShapeSet);
+    XFreePixmap(display, pixmap);
 }
 
 bool WindowClosed(Display *display, Window window) {

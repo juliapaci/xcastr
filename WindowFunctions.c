@@ -32,13 +32,14 @@ Window CreateWindow(Display *display, Window root, Colormap colourmap, XWindowAt
 
     // wm specs
     Atom property[3];
-    property[0] = XInternAtom(display, "_NET_WM_WINDOW_TYPE", 0);
-    property[1] = XInternAtom(display, "_NET_WM_WINDOW_TYPE_UTILITY", 0);
-    XChangeProperty(display, window, property[0], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 2L);
-    property[0] = XInternAtom(display, "_NET_WM_STATE", 0);
+    property[1] = XInternAtom(display, "_NET_WM_WINDOW_TYPE", 0);
+    property[0] = XInternAtom(display, "_NET_WM_WINDOW_TYPE_UTILITY", 0);
+    XChangeProperty(display, window, property[1], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 1);
+    property[2] = XInternAtom(display, "_NET_WM_STATE", 0);
     property[1] = XInternAtom(display, "_NET_WM_STATE_ABOVE", 0);
-    property[2] = XInternAtom(display, "_NET_WM_STATE_STICKY", 0);
-    XChangeProperty(display, window, property[0], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 3L);
+    // TODO: sticky window always no matter override_redirect
+    property[0] = XInternAtom(display, "_NET_WM_STATE_STICKY", 0);
+    XChangeProperty(display, window, property[2], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 2);
 
     // TODO: try to raise the stacking order to be ontop of floating windows
     XSetTransientForHint(display, window, window);

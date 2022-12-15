@@ -20,7 +20,7 @@ Window CreateWindow(Display *display, Window root, Colormap colourmap, XWindowAt
     setWindowAttributes.do_not_propagate_mask = NOT_PROPAGATE_MASK;
     setWindowAttributes.colormap = colourmap;
 
-    unsigned long mask = CWColormap | CWBorderPixel | CWBackPixel | CWEventMask | CWWinGravity | CWBitGravity | CWSaveUnder | CWDontPropagate | CWOverrideRedirect;
+    unsigned long mask = CWColormap | CWBorderPixel | CWBackPixel | CWEventMask | CWWinGravity | CWBitGravity | CWSaveUnder | CWDontPropagate;
 
     // TODO: must consider window manager gaps minus from root width, heigh. also border from windowAttributes.border_width
     Window window = XCreateWindow(display, root, rootAttr.width-width, rootAttr.height-height, width, height, 0, vInfo.depth, InputOutput, vInfo.visual, mask, &setWindowAttributes);
@@ -37,9 +37,8 @@ Window CreateWindow(Display *display, Window root, Colormap colourmap, XWindowAt
     XChangeProperty(display, window, property[1], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 1);
     property[2] = XInternAtom(display, "_NET_WM_STATE", 0);
     property[1] = XInternAtom(display, "_NET_WM_STATE_ABOVE", 0);
-    // TODO: sticky window always no matter override_redirect
     property[0] = XInternAtom(display, "_NET_WM_STATE_STICKY", 0);
-    XChangeProperty(display, window, property[2], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 2);
+    XChangeProperty(display, window, property[2], XA_ATOM, 32, PropModeAppend, (unsigned char*) property, 2);
 
     // TODO: try to raise the stacking order to be ontop of floating windows
     XSetTransientForHint(display, window, window);
@@ -49,7 +48,11 @@ Window CreateWindow(Display *display, Window root, Colormap colourmap, XWindowAt
     return window;
 }
 
-void ShapeWindow(Display *display, Window window, XWindowAttributes windowAttr, int angle, int angle2) {
+void ShapeWindow(Display *display, Window window, XWindowAttributes windowAttr, int radius, int diameter) {
+    // if the width or height of the window is smaller than the corners
+    // TODO: if window height or width is smaller then make round = 0 and change update interval
+    if(windowAttr.width < diameter || windowAttr.height < diameter)
+        return;
     // shape for non rectangular window
     int shapeEventBase, shapeErrorBase;
     if(!XShapeQueryExtension(display, &shapeEventBase, &shapeErrorBase))
@@ -58,17 +61,23 @@ void ShapeWindow(Display *display, Window window, XWindowAttributes windowAttr, 
     int pixmap = XCreatePixmap(display, window, windowAttr.width, windowAttr.height, 1);
 
     XGCValues xgcv;
-
     GC gc = XCreateGC(display, pixmap, 0, &xgcv);
 
-    XSetForeground (display, gc, 0);
-    XFillRectangle (display, pixmap, gc, 0, 0, windowAttr.width, windowAttr.height);
-    XSetForeground (display, gc, 1);
-    XFillArc(display, pixmap, gc, 0, 0, windowAttr.width, windowAttr.height, 0, angle2);
+    XSetForeground(display, gc, 0);
+    XFillRectangle(display, pixmap, gc, 0, 0, windowAttr.width, windowAttr.height);
+    XSetForeground(display, gc, 1);
+    XFillArc(display, pixmap, gc, 0, 0, diameter, diameter, 0, 23040); // 23040
+    XFillArc(display, pixmap, gc, 0, windowAttr.height-diameter-1, diameter, diameter, 0, 23040);
+    XFillArc(display, pixmap, gc, windowAttr.width-diameter-1, 0, diameter, diameter, 0, 23040);
+    XFillArc(display, pixmap, gc, windowAttr.width-diameter-1, windowAttr.height-diameter-1, diameter, diameter, 0, 23040);
+    XFillRectangle(display, pixmap, gc, radius, 0, windowAttr.width-diameter, windowAttr.height);
+    XFillRectangle(display, pixmap, gc, 0, radius, windowAttr.width, windowAttr.height-diameter);
 
     XShapeCombineMask(display, window, ShapeBounding, -windowAttr.border_width, -windowAttr.border_width, pixmap, ShapeSet);
     XShapeCombineMask(display, window, ShapeClip, 0, 0, pixmap, ShapeSet);
+
     XFreePixmap(display, pixmap);
+    XFreeGC(display, gc);
 }
 
 bool WindowClosed(Display *display, Window window) {

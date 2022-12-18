@@ -7,7 +7,7 @@
 
 typedef enum { false, true } bool;
 
-Window CreateWindow(Display *display, Window root, Colormap colourmap, XWindowAttributes rootAttr, XVisualInfo vInfo, int background, int width, int height) {
+Window CreateWindow(Display *display, Window root, Colormap colourmap, int screen, XVisualInfo vInfo, int background, int width, int height) {
 
     XSetWindowAttributes setWindowAttributes;
     setWindowAttributes.background_pixmap = None;
@@ -23,7 +23,7 @@ Window CreateWindow(Display *display, Window root, Colormap colourmap, XWindowAt
     unsigned long mask = CWColormap | CWBorderPixel | CWBackPixel | CWEventMask | CWWinGravity | CWBitGravity | CWSaveUnder | CWDontPropagate;
 
     // TODO: must consider window manager gaps minus from root width, heigh. also border from windowAttributes.border_width
-    Window window = XCreateWindow(display, root, rootAttr.width-width, rootAttr.height-height, width, height, 0, vInfo.depth, InputOutput, vInfo.visual, mask, &setWindowAttributes);
+    Window window = XCreateWindow(display, root, DisplayWidth(display, screen)-width, DisplayHeight(display, screen)-height, width, height, 0, vInfo.depth, InputOutput, vInfo.visual, mask, &setWindowAttributes);
 
     // Set window name
     XStoreName(display, window, "XCastr");
@@ -35,13 +35,14 @@ Window CreateWindow(Display *display, Window root, Colormap colourmap, XWindowAt
     property[1] = XInternAtom(display, "_NET_WM_WINDOW_TYPE", 0);
     property[0] = XInternAtom(display, "_NET_WM_WINDOW_TYPE_UTILITY", 0);
     XChangeProperty(display, window, property[1], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 1);
+    // TODO: only uses one property, make it se both above and sticky
     property[2] = XInternAtom(display, "_NET_WM_STATE", 0);
     property[1] = XInternAtom(display, "_NET_WM_STATE_ABOVE", 0);
     property[0] = XInternAtom(display, "_NET_WM_STATE_STICKY", 0);
     XChangeProperty(display, window, property[2], XA_ATOM, 32, PropModeAppend, (unsigned char*) property, 2);
 
     // TODO: try to raise the stacking order to be ontop of floating windows
-    XSetTransientForHint(display, window, window);
+    XSetTransientForHint(display, window, window); // should it set the transient for wm hint?
     // XRaiseWindow(display, window);
 
 
@@ -49,14 +50,17 @@ Window CreateWindow(Display *display, Window root, Colormap colourmap, XWindowAt
 }
 
 void ShapeWindow(Display *display, Window window, XWindowAttributes windowAttr, int radius, int diameter) {
+
+    int shapeEventBase, shapeErrorBase;
+    if(!XShapeQueryExtension(display, &shapeEventBase, &shapeErrorBase))
+        return; // printf("Shape library not found");
+
     // if the width or height of the window is smaller than the corners
     // TODO: if window height or width is smaller then make round = 0 and change update interval
     if(windowAttr.width < diameter || windowAttr.height < diameter)
         return;
+
     // shape for non rectangular window
-    int shapeEventBase, shapeErrorBase;
-    if(!XShapeQueryExtension(display, &shapeEventBase, &shapeErrorBase))
-        return; // printf("Shape library not found");
 
     int pixmap = XCreatePixmap(display, window, windowAttr.width, windowAttr.height, 1);
 
@@ -102,6 +106,6 @@ void TransparentWindow(Display *display, Window window, int alpha) {
     alpha = alpha | alpha << 8 | alpha << 16 | alpha << 24;
 
     Atom windowOpacity = XInternAtom(display, "_NET_WM_WINDOW_OPACITY", 0);
-    XChangeProperty(display, window, windowOpacity, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &alpha, 1);
+    XChangeProperty(display, window, windowOpacity, XA_CARDINAL, 32, PropModeReplace, (unsigned char*) &alpha, 1);
 }
 

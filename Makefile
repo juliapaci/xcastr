@@ -7,7 +7,7 @@ TARGET = XCastr
 # Binary location
 BIN = /usr/bin
 
-$(TARGET): $(TARGET).c
+$(TARGET): $(TARGET).c WindowFunctions.c
 	gcc $(CFLAGS) $(TARGET).c -o $(TARGET)
 
 clean:

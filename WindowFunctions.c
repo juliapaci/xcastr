@@ -17,7 +17,6 @@ Window CreateWindow(Display *display, Window root, int screen, int background, i
     XMatchVisualInfo(display, screen, 32, TrueColor, &visualInfo);
     Colormap colourmap = XCreateColormap(display, root, visualInfo.visual, AllocNone);
 
-
     XSetWindowAttributes setWindowAttributes;
     setWindowAttributes.background_pixmap = None;
     setWindowAttributes.background_pixel = background;
@@ -48,8 +47,8 @@ Window CreateWindow(Display *display, Window root, int screen, int background, i
     property[0] = XInternAtom(display, "_NET_WM_STATE_STICKY", 0);
     XChangeProperty(display, window, property[2], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 2);
 
-    // TODO: try to raise the stacking order to be ontop of floating windows
-    XSetTransientForHint(display, window, window); // should it set the transient for wm hint?
+    XSetTransientForHint(display, window, window); // whats the difference between this and setting the hint manually?
+    // TODO: try to raise the stacking order to always be ontop of floating windows
     // XRaiseWindow(display, window);
 
     return window;
@@ -88,15 +87,30 @@ void ShapeWindow(Display *display, Window window, XWindowAttributes windowAttr, 
     XFreePixmap(display, pixmap);
     XFreeGC(display, gc);
 }
+
 const char *text[249] = {"reserved", "esc", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "minus", "equal", "backspace", "tab", "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "leftbrace", "rightbrace", "enter", "leftctrl", "a", "s", "d", "f", "g", "h", "j", "k", "l", "semicolon", "apostrophe", "grave", "leftshift", "backslash", "z", "x", "c", "v", "b", "n", "m", "comma", "dot", "slash", "rightshift", "kpasterisk", "leftalt", "space", "capslock", "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "numlock", "scrolllock", "kp7", "kp8", "kp9", "kpminus", "kp4", "kp5", "kp6", "kpplus", "kp1", "kp2", "kp3", "kp0", "kpdot", "zenkakuhankaku", "102nd", "f11", "f12", "ro", "katakana", "hiragana", "henkan", "katakanahiragana", "muhenkan", "kpjpcomma", "kpenter", "rightctrl", "kpslash", "sysrq", "rightalt", "linefeed", "home", "up", "pageup", "left", "right", "end", "down", "pagedown", "insert", "delete", "macro", "mute", "volumedown", "volumeup", "power", "kpequal", "kpplusminus", "pause", "scale", "kpcomma", "hangeul", "hanguel", "hanja", "yen", "leftmeta", "rightmeta", "compose", "stop", "again", "props", "undo", "front", "copy", "open", "paste", "find", "cut", "help", "menu", "calc", "setup", "sleep", "wakeup", "file", "sendfile", "deletefile", "xfer", "prog1", "prog2", "www", "msdos", "coffee", "screenlock", "rotate_display", "direction", "cyclewindows", "mail", "bookmarks", "computer", "back", "forward", "closecd", "ejectcd", "ejectclosecd", "nextsong", "playpause", "previoussong", "stopcd", "record", "rewind", "phone", "iso", "config", "homepage", "refresh", "exit", "move", "edit", "scrollup", "scrolldown", "kpleftparen", "kprightparen", "new", "redo", "f13", "f14", "f15", "f16", "f17", "f18", "f19", "f20", "f21", "f22", "f23", "f24", "playcd", "pausecd", "prog3", "prog4", "all_applications", "dashboard", "suspend", "close", "play", "fastforward", "bassboost", "print", "hp", "camera", "sound", "question", "email", "chat", "search", "connect", "finance", "sport", "shop", "alterase", "cancel", "brightnessdown", "brightnessup", "media", "switchvideomode", "kbdillumtoggle", "kbdillumdown", "kbdillumup", "send", "reply", "forwardmail", "save", "documents", "battery", "bluetooth", "wlan", "uwb", "unknown", "video_next", "video_prev", "brightness_cycle", "brightness_auto", "brightness_zero", "display_off", "wwan", "wimax", "rfkill", "micmute"}; // /usr/include/linux/input-event-codes.h
 
-void WindowText(Display *display, Window window, char *style, int keycode, GC gc) {
+void WindowText(Display *display, Window window, char *style, unsigned long colour, int keycode, GC gc) {
     XFontStruct *font = XLoadQueryFont(display, style);
     if(font == NULL) {
         printf("font: \"%p\" does not exist", style);
         return;
     }
     XSetFont(display, gc, font->fid);
+
+    unsigned int red = (colour & 0xff0000) >> 16;
+    unsigned int green = (colour & 0xff00) >> 8;
+    unsigned int blue = colour & 0xff;
+
+    XColor color;
+    Colormap colormap = DefaultColormap(display, DefaultScreen(display));
+
+    color.red = red * 257; //convert to 16-bit
+    color.green = green * 257; //convert to 16-bit
+    color.blue = blue * 257; //convert to 16-bit
+    XAllocColor(display, colormap, &color);
+    XSetForeground(display, gc, color.pixel);
+
     // int fontHeight = font->ascent + font->descent;
     // XTextItem key[1];
     // key[0].chars = "aa";
@@ -106,9 +120,7 @@ void WindowText(Display *display, Window window, char *style, int keycode, GC gc
     // int fontWidth = XkeyWidth(font, key, 1);
     // XDrawText(display, window, gc, 0, fontHeight, key, 1);
 
-    // const char *text[110] = {"Esc", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "<--", "Tab", "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "[", "]", "Return", "LCtrl", "a", "s", "d", "f", "g", "h", "j", "k", "l", ";", "\'", "`", "LShift", "\\", "z", "x", "c", "v", "b", "n", "m", ",", ".", "/", "RShift", " ", "LAlt", "_", "CLock", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "NLock", "SLock", "KP 7", "KP 8", "KP 9", "KP -", "KP +", "KP 1", "KP 2", "KP 3", "KP 0", "KP .", "", "", "International", "F11", "F12", "Home" };
     // printf("Key: %d, Text: %s\n", keycode, text[keycode - 9]);
-
     XDrawString(display, window, gc, 20, 20, text[keycode], strlen(text[keycode]));
     // XUnloadFont(display, font->fid);
 }

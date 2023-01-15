@@ -9,7 +9,6 @@
 #include <unistd.h>
 
 int main(int argc, char *argv[]) {
-
     Display *display = XOpenDisplay(NULL);
     int screen = DefaultScreen(display);
     Window root = XDefaultRootWindow(display), window;
@@ -38,10 +37,9 @@ int main(int argc, char *argv[]) {
     TransparentWindow(display, window, transparency);
 
     // TODO: not Interactable should be able to move and resizew the window
-    // TODO: something like an ini file to keep window position and user variables
-    // TODO: render text with default font but optionally custom
-    // TODO: remove decorations? (done with override redirect but isn tractable)
-    // TODO: Check if focus window asks for password and if it does then replace the characters with "*"
+    // TODO: remove window decoraions
+    // TODO: something like an ini file to keep window position or telast an option to save settings
+    // TODO: Check if focus window asks for password and if it does then replace the characters with '*'
     // TODO: dynamically change window size by text, add maximum width variable
     // TODO: fade window when silent after a while (from 255/200 alpha to 0)
     // TODO: detect key presses from root window
@@ -77,7 +75,7 @@ int main(int argc, char *argv[]) {
 
             if(event.type == KeyPress) {
                 // printf("Key: %d\n", event.xkey.keycode);
-                WindowText(display, window, font, event.xkey.keycode - 8, gc);
+                WindowText(display, window, font, colour, event.xkey.keycode - 8, gc);
             }
         }
     }

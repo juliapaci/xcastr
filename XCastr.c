@@ -2,7 +2,6 @@
 #include <X11/Xutil.h>
 
 #include "WindowFunctions.c"
-#include "config.h"
 
 #include <stdlib.h>
 
@@ -19,22 +18,19 @@ int main(int argc, char *argv[]) {
     }
 
 
-    // create window
     window = CreateWindow(display, root, screen, background, width, height);
 
-    int diameter = radius * 2;
     XWindowAttributes windowAttributes;
     if(radius != -1) {
         // window attribuets for size (for shape)
         XGetWindowAttributes(display, window, &windowAttributes);
-        ShapeWindow(display, window, windowAttributes, radius, diameter);
+        ShapeWindow(display, window, windowAttributes);
     }
 
     if(!interactable)
         WindowIntractable(display, window);
-
-    // make window transparent
-    TransparentWindow(display, window, transparency);
+    if(transparency != 255)
+        TransparentWindow(display, window);
 
     // TODO: not Interactable should be able to move and resizew the window
     // TODO: remove window decoraions
@@ -50,39 +46,44 @@ int main(int argc, char *argv[]) {
     XSetBackground(display, gc, WhitePixel(display, 0));
     XSetForeground(display, gc, BlackPixel(display, 0));
 
-    // Display window
     XMapWindow(display, window);
     XSync(display, 0);
 
     // allow key events to be reported (from root)
     XSelectInput(display, window, KeyPressMask);
     XEvent event;
+    int offset = paddingX;
 
     // keep window open until manually closed
     // TODO: Why does it take longer to remove window depending on how big it is? (lower sleep less time but it shouldnt be effected by size?).
     // TODO: find a better way to update the window other than while loop or is that he best? ANSWER: yes there is, add an event loop instead
     while(!WindowClosed(display, window)) {
         // usleep is depricated use nanosleep?
-        usleep(update);
+        // usleep(update);
+        XGetWindowAttributes(display, window, &windowAttributes);
 
-        if(radius != -1) {
-            XGetWindowAttributes(display, window, &windowAttributes);
-            ShapeWindow(display, window, windowAttributes, radius, diameter);
-        }
+        if(radius != -1)
+            ShapeWindow(display, window, windowAttributes);
 
         if(XPending(display)) {
             XNextEvent(display, &event);
 
             if(event.type == KeyPress) {
-                // printf("Key: %d\n", event.xkey.keycode);
-                WindowText(display, window, font, colour, event.xkey.keycode - 8, gc);
+                // printf("Keycode: %d\n", event.xkey.keycode);
+                offset += WindowText(display, window, offset, event.xkey.keycode - 8, gc) + space;
+                if(event.xkey.keycode == 9) {
+                    XClearArea(display, window, 0, 0, windowAttributes.width, windowAttributes.height, false);
+                    offset = paddingX;
+                }
+                if(offset + paddingX >= windowAttributes.width - paddingX)
+                    offset = paddingX;
             }
         }
     }
 
     XUnmapWindow(display, window);
     XDestroyWindow(display, window);
-    // XFlush(display);
+    XFlush(display);
     XCloseDisplay(display);
 
     return 0;

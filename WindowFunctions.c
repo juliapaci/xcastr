@@ -5,10 +5,10 @@
 #include <X11/extensions/shape.h>
 #include <X11/extensions/Xfixes.h>
 
-
 #include <stdio.h>
 
 typedef enum { false, true } bool;
+#include "config.h"
 
 Window CreateWindow(Display *display, Window root, int screen, int background, int width, int height) {
 
@@ -54,7 +54,8 @@ Window CreateWindow(Display *display, Window root, int screen, int background, i
     return window;
 }
 
-void ShapeWindow(Display *display, Window window, XWindowAttributes windowAttr, int radius, int diameter) {
+void ShapeWindow(Display *display, Window window, XWindowAttributes windowAttr) {
+    int diameter = radius * 2;
 
     int shapeEventBase, shapeErrorBase;
     if(!XShapeQueryExtension(display, &shapeEventBase, &shapeErrorBase))
@@ -88,15 +89,14 @@ void ShapeWindow(Display *display, Window window, XWindowAttributes windowAttr, 
     XFreeGC(display, gc);
 }
 
-const char *text[249] = {"reserved", "esc", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "minus", "equal", "backspace", "tab", "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "leftbrace", "rightbrace", "enter", "leftctrl", "a", "s", "d", "f", "g", "h", "j", "k", "l", "semicolon", "apostrophe", "grave", "leftshift", "backslash", "z", "x", "c", "v", "b", "n", "m", "comma", "dot", "slash", "rightshift", "kpasterisk", "leftalt", "space", "capslock", "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "numlock", "scrolllock", "kp7", "kp8", "kp9", "kpminus", "kp4", "kp5", "kp6", "kpplus", "kp1", "kp2", "kp3", "kp0", "kpdot", "zenkakuhankaku", "102nd", "f11", "f12", "ro", "katakana", "hiragana", "henkan", "katakanahiragana", "muhenkan", "kpjpcomma", "kpenter", "rightctrl", "kpslash", "sysrq", "rightalt", "linefeed", "home", "up", "pageup", "left", "right", "end", "down", "pagedown", "insert", "delete", "macro", "mute", "volumedown", "volumeup", "power", "kpequal", "kpplusminus", "pause", "scale", "kpcomma", "hangeul", "hanguel", "hanja", "yen", "leftmeta", "rightmeta", "compose", "stop", "again", "props", "undo", "front", "copy", "open", "paste", "find", "cut", "help", "menu", "calc", "setup", "sleep", "wakeup", "file", "sendfile", "deletefile", "xfer", "prog1", "prog2", "www", "msdos", "coffee", "screenlock", "rotate_display", "direction", "cyclewindows", "mail", "bookmarks", "computer", "back", "forward", "closecd", "ejectcd", "ejectclosecd", "nextsong", "playpause", "previoussong", "stopcd", "record", "rewind", "phone", "iso", "config", "homepage", "refresh", "exit", "move", "edit", "scrollup", "scrolldown", "kpleftparen", "kprightparen", "new", "redo", "f13", "f14", "f15", "f16", "f17", "f18", "f19", "f20", "f21", "f22", "f23", "f24", "playcd", "pausecd", "prog3", "prog4", "all_applications", "dashboard", "suspend", "close", "play", "fastforward", "bassboost", "print", "hp", "camera", "sound", "question", "email", "chat", "search", "connect", "finance", "sport", "shop", "alterase", "cancel", "brightnessdown", "brightnessup", "media", "switchvideomode", "kbdillumtoggle", "kbdillumdown", "kbdillumup", "send", "reply", "forwardmail", "save", "documents", "battery", "bluetooth", "wlan", "uwb", "unknown", "video_next", "video_prev", "brightness_cycle", "brightness_auto", "brightness_zero", "display_off", "wwan", "wimax", "rfkill", "micmute"}; // /usr/include/linux/input-event-codes.h
 
-void WindowText(Display *display, Window window, char *style, unsigned long colour, int keycode, GC gc) {
-    XFontStruct *font = XLoadQueryFont(display, style);
+int WindowText(Display *display, Window window, int offset, int keycode, GC gc) {
+    XFontStruct *loadedFont = XLoadQueryFont(display, font);
     if(font == NULL) {
-        printf("font: \"%p\" does not exist", style);
-        return;
+        printf("font: \"%p\" does not exist", font);
+        return -1;
     }
-    XSetFont(display, gc, font->fid);
+    XSetFont(display, gc, loadedFont->fid);
 
     unsigned int red = (colour & 0xff0000) >> 16;
     unsigned int green = (colour & 0xff00) >> 8;
@@ -105,9 +105,9 @@ void WindowText(Display *display, Window window, char *style, unsigned long colo
     XColor color;
     Colormap colormap = DefaultColormap(display, DefaultScreen(display));
 
-    color.red = red * 257; //convert to 16-bit
-    color.green = green * 257; //convert to 16-bit
-    color.blue = blue * 257; //convert to 16-bit
+    color.red = red * 257;
+    color.green = green * 257;
+    color.blue = blue * 257;
     XAllocColor(display, colormap, &color);
     XSetForeground(display, gc, color.pixel);
 
@@ -117,12 +117,13 @@ void WindowText(Display *display, Window window, char *style, unsigned long colo
     // key[0].nchars = 2;
     // key[0].delta = 0;
     // key[0].font = font->fid;
-    // int fontWidth = XkeyWidth(font, key, 1);
     // XDrawText(display, window, gc, 0, fontHeight, key, 1);
 
     // printf("Key: %d, Text: %s\n", keycode, text[keycode - 9]);
-    XDrawString(display, window, gc, 20, 20, text[keycode], strlen(text[keycode]));
+    XDrawString(display, window, gc, offset, paddingY, text[keycode], strlen(text[keycode]));
     // XUnloadFont(display, font->fid);
+
+    return XTextWidth(loadedFont, text[keycode], strlen(text[keycode]));
 }
 
 bool WindowClosed(Display *display, Window window) {
@@ -144,10 +145,10 @@ void WindowIntractable(Display *display, Window window) {
     XFixesDestroyRegion(display, region);
 }
 
-void TransparentWindow(Display *display, Window window, int alpha) {
-    alpha = alpha | alpha << 8 | alpha << 16 | alpha << 24;
+void TransparentWindow(Display *display, Window window) {
+    transparency = transparency | transparency << 8 | transparency << 16 | transparency << 24;
 
     Atom windowOpacity = XInternAtom(display, "_NET_WM_WINDOW_OPACITY", 0);
-    XChangeProperty(display, window, windowOpacity, XA_CARDINAL, 32, PropModeReplace, (unsigned char*) &alpha, 1);
+    XChangeProperty(display, window, windowOpacity, XA_CARDINAL, 32, PropModeReplace, (unsigned char*) &transparency, 1);
 }
 

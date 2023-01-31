@@ -1,14 +1,15 @@
 #include <X11/Xatom.h>
 
+#include <stdio.h>
 #include <string.h>
 
 #include <X11/extensions/shape.h>
 #include <X11/extensions/Xfixes.h>
 
-#include <stdio.h>
-
-typedef enum { false, true } bool;
 #include "config.h"
+
+// for some reason if another event is in the same file as the current keyrpess it will crash??? why???? so its here now
+XKeyEvent keysend;
 
 Window CreateWindow(Display *display, Window root, int screen, int background, int width, int height) {
 
@@ -36,10 +37,11 @@ Window CreateWindow(Display *display, Window root, int screen, int background, i
     XClassHint hint = {  "xcastr", "XCastr"  };
     XSetClassHint(display, window, &hint);
 
-    // wm specs
+    // wm specs and ewmh
     Atom property[3];
     property[1] = XInternAtom(display, "_NET_WM_WINDOW_TYPE", 0);
     property[0] = XInternAtom(display, "_NET_WM_WINDOW_TYPE_UTILITY", 0);
+    // property[0] = XInternAtom(display, "_NET_WM_WINDOW_TYPE_MODAL", 0);
     XChangeProperty(display, window, property[1], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 1);
     // TODO: only uses one property, make it se both above and sticky
     property[2] = XInternAtom(display, "_NET_WM_STATE", 0);
@@ -58,8 +60,10 @@ void ShapeWindow(Display *display, Window window, XWindowAttributes windowAttr) 
     int diameter = radius * 2;
 
     int shapeEventBase, shapeErrorBase;
-    if(!XShapeQueryExtension(display, &shapeEventBase, &shapeErrorBase))
-        return; // printf("Shape library not found");
+    if(!XShapeQueryExtension(display, &shapeEventBase, &shapeErrorBase)) {
+        return;
+        printf("Shape library not found");
+    }
 
     // if the width or height of the window is smaller than the corners
     // TODO: if window height or width is smaller then make round = 0 (dont update shape) and change update interval
@@ -89,49 +93,42 @@ void ShapeWindow(Display *display, Window window, XWindowAttributes windowAttr) 
     XFreeGC(display, gc);
 }
 
-
-int WindowText(Display *display, Window window, int offset, int keycode, GC gc) {
-    XFontStruct *loadedFont = XLoadQueryFont(display, font);
-    if(font == NULL) {
-        printf("font: \"%p\" does not exist", font);
-        return -1;
-    }
-    XSetFont(display, gc, loadedFont->fid);
-
+void HexState(Display *display, GC gc, unsigned long colour) {
     unsigned int red = (colour & 0xff0000) >> 16;
     unsigned int green = (colour & 0xff00) >> 8;
     unsigned int blue = colour & 0xff;
-
     XColor color;
     Colormap colormap = DefaultColormap(display, DefaultScreen(display));
-
     color.red = red * 257;
     color.green = green * 257;
     color.blue = blue * 257;
+
     XAllocColor(display, colormap, &color);
     XSetForeground(display, gc, color.pixel);
-
-    // int fontHeight = font->ascent + font->descent;
-    // XTextItem key[1];
-    // key[0].chars = "aa";
-    // key[0].nchars = 2;
-    // key[0].delta = 0;
-    // key[0].font = font->fid;
-    // XDrawText(display, window, gc, 0, fontHeight, key, 1);
-
-    // printf("Key: %d, Text: %s\n", keycode, text[keycode - 9]);
-    XDrawString(display, window, gc, offset, paddingY, text[keycode], strlen(text[keycode]));
-    // XUnloadFont(display, font->fid);
-
-    return XTextWidth(loadedFont, text[keycode], strlen(text[keycode]));
 }
 
-bool WindowClosed(Display *display, Window window) {
+void initKeyEvent(Display *display) {
+}
+
+void ReGrab(Display *display, Window window, XKeyEvent keysend) {
+    int revert;
+    XUngrabKeyboard(display, CurrentTime);
+    XGetInputFocus(display, &window, &revert);
+    XSendEvent(display, window, True, KeyPressMask, (XEvent *)&keysend);
+    XFlush(display);
+
+    int grab = XGrabKeyboard(display, window, 0, GrabModeAsync, GrabModeAsync, CurrentTime);
+    if (grab != GrabSuccess) {
+        printf("Failed to grab keyboard: \"%d\"\n", grab);
+        return;
+    }
+}
+
+Bool WindowClosed(Display *display, Window window, XEvent event) {
     Atom Protocols = XInternAtom(display, "WM_PROTOCOLS", 0);
     Atom DeleteWindow = XInternAtom(display, "WM_DELETE_WINDOW", 0);
     XSetWMProtocols(display, window, &DeleteWindow, 1);
 
-    XEvent event;
     if(XCheckTypedWindowEvent(display, window, ClientMessage, &event) && event.xclient.message_type == Protocols && event.xclient.data.l[0] == DeleteWindow)
         return 1;
     return 0;
@@ -151,4 +148,3 @@ void TransparentWindow(Display *display, Window window) {
     Atom windowOpacity = XInternAtom(display, "_NET_WM_WINDOW_OPACITY", 0);
     XChangeProperty(display, window, windowOpacity, XA_CARDINAL, 32, PropModeReplace, (unsigned char*) &transparency, 1);
 }
-

@@ -1,10 +1,11 @@
+#include <X11/Xlib.h>
 #include <X11/Xatom.h>
-
-#include <stdio.h>
-#include <string.h>
 
 #include <X11/extensions/shape.h>
 #include <X11/extensions/Xfixes.h>
+
+#include <stdio.h>
+#include <string.h>
 
 #include "config.h"
 
@@ -107,17 +108,15 @@ void HexState(Display *display, GC gc, unsigned long colour) {
     XSetForeground(display, gc, color.pixel);
 }
 
-void initKeyEvent(Display *display) {
-}
-
-void ReGrab(Display *display, Window window, XKeyEvent keysend) {
+void ReGrab(Display *display, XKeyEvent keysend) {
     int revert;
+    Window focus;
     XUngrabKeyboard(display, CurrentTime);
-    XGetInputFocus(display, &window, &revert);
-    XSendEvent(display, window, True, KeyPressMask, (XEvent *)&keysend);
+    XGetInputFocus(display, &focus, &revert);
+    XSendEvent(display, focus, True, KeyPressMask, (XEvent *)&keysend);
     XFlush(display);
 
-    int grab = XGrabKeyboard(display, window, 0, GrabModeAsync, GrabModeAsync, CurrentTime);
+    int grab = XGrabKeyboard(display, XDefaultRootWindow(display), 0, GrabModeAsync, GrabModeAsync, CurrentTime);
     if (grab != GrabSuccess) {
         printf("Failed to grab keyboard: \"%d\"\n", grab);
         return;

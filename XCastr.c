@@ -1,5 +1,3 @@
-#include <X11/Xlib.h>
-
 #include "WindowFunctions.c"
 
 int main(int argc, char *argv[]) {
@@ -57,7 +55,7 @@ int main(int argc, char *argv[]) {
 
     // TODO: allow key events to be reported from root (maybe look at how QT and GTK implement a shared grab)
     // SharedGrab(display, root, event.xkey.keycode);
-    int grab = XGrabKeyboard(display, window, 0, GrabModeAsync, GrabModeAsync, CurrentTime);
+    int grab = XGrabKeyboard(display, root, 0, GrabModeAsync, GrabModeAsync, CurrentTime);
     if (grab != GrabSuccess) {
         printf("Failed to grab keyboard: \"%d\"\n", grab);
         return -1;
@@ -72,7 +70,6 @@ int main(int argc, char *argv[]) {
     keysend.subwindow = None;
     keysend.time = CurrentTime;
     keysend.x = keysend.y = keysend.x_root = keysend.y_root = 1;
-    keysend.keycode = 32;
     keysend.same_screen = 1;
     printf("%d\n", keysend.type);
 
@@ -89,8 +86,8 @@ int main(int argc, char *argv[]) {
         if(XPending(display)) {
             XNextEvent(display, &keypress);
             if(keypress.type == KeyPress) {
-                // keysend.keycode = keypress.xkey.keycode;
-                // ReGrab(display, window, keysend);
+                keysend.keycode = keypress.xkey.keycode;
+                ReGrab(display, keysend);
 
                 // printf("Keycode: %d\n", keypress.xkey.keycode);
                 key = keypress.xkey.keycode - 8;

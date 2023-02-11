@@ -26,8 +26,7 @@ int main(int argc, char *argv[]) {
         TransparentWindow(display, window);
 
     // TODO: not Interactable should be able to move and resizew the window
-    // TODO: remove window decoraions
-    // TODO: something like an ini file to keep window position or telast an option to save settings
+    // TODO: *Maybe* something like an ini file to keep window position or telast an option to save settings
     // TODO: Check if focus window asks for password and if it does then replace the characters with '*'
     // TODO: dynamically change window size by text, add maximum width variable
     // TODO: fade window when silent after a while (from 255/200 alpha to 0)
@@ -38,6 +37,9 @@ int main(int argc, char *argv[]) {
     // TODO: dont rely on rarely usqed extensions
     // TODO: maybe have to handle KeyRelease event
     // TODO: capital and other for modifier keys
+    // TODO: only use xtest for programs that dont like XSendEvent or no?
+    // TODO: Mask support (control, meta, alt, etc.) for XSendEvent
+    // TODO: implement key down functionality
 
     GC gc = XCreateGC(display, window, 0, 0);
     XSetBackground(display, gc, WhitePixel(display, 0));
@@ -53,25 +55,19 @@ int main(int argc, char *argv[]) {
     XMapRaised(display, window);
     XSync(display, 0);
 
-    // TODO: allow key events to be reported from root (maybe look at how QT and GTK implement a shared grab)
-    // SharedGrab(display, root, event.xkey.keycode);
     int grab = XGrabKeyboard(display, root, 0, GrabModeAsync, GrabModeAsync, CurrentTime);
     if (grab != GrabSuccess) {
         printf("Failed to grab keyboard: \"%d\"\n", grab);
         return -1;
     }
-    // XSelectInput(display, window, KeyPressMask);
-
 
     XEvent keypress;
-    // initKeyEvent(display);
     keysend.type = KeyPress;
     keysend.display = display;
     keysend.subwindow = None;
     keysend.time = CurrentTime;
     keysend.x = keysend.y = keysend.x_root = keysend.y_root = 1;
     keysend.same_screen = 1;
-    printf("%d\n", keysend.type);
 
     int offset = paddingX, currentWidth;
     int key;
@@ -79,8 +75,7 @@ int main(int argc, char *argv[]) {
     while(!WindowClosed(display, window, keypress)) {
         XGetWindowAttributes(display, window, &windowAttributes);
 
-        if(radius != -1)
-            // TODO: only shape window on widht/height difference
+        if(radius != -1) // TODO: only shape window on widht/height difference
             ShapeWindow(display, window, windowAttributes);
 
         if(XPending(display)) {
@@ -103,15 +98,6 @@ int main(int argc, char *argv[]) {
 
                 offset += currentWidth + space;
                 // XCopyArea(display, window, window, gc, );
-
-
-
-                // grab = XGrabKeyboard(display, window, 0, GrabModeAsync, GrabModeAsync, CurrentTime);
-                // if (grab != GrabSuccess) {
-                    // printf("Failed to grab keyboard: \"%d\"\n", grab);
-                    // return -1;
-                // }
-                // XSendEvent(dpy, target_window, True, KeyPressMask, (XEvent *)&event);
 
             }
         }

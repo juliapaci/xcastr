@@ -3,6 +3,7 @@
 
 #include <X11/extensions/shape.h>
 #include <X11/extensions/Xfixes.h>
+#include <X11/extensions/XTest.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -28,7 +29,7 @@ Window CreateWindow(Display *display, Window root, int screen, int background, i
     setWindowAttributes.save_under = 1;
     setWindowAttributes.colormap = colourmap;
 
-    unsigned long mask = CWColormap | CWBorderPixel | CWBackPixel | CWEventMask | CWWinGravity | CWBitGravity | CWSaveUnder | CWDontPropagate;
+    unsigned long mask = CWColormap | CWBorderPixel | CWBackPixel;
 
     // TODO: must consider window manager gaps minus from root width, heigh. also border from windowAttributes.border_width
     Window window = XCreateWindow(display, root, DisplayWidth(display, screen)-width, DisplayHeight(display, screen)-height, width, height, 0, visualInfo.depth, InputOutput, visualInfo.visual, mask, &setWindowAttributes);
@@ -113,7 +114,13 @@ void ReGrab(Display *display, XKeyEvent keysend) {
     Window focus;
     XUngrabKeyboard(display, CurrentTime);
     XGetInputFocus(display, &focus, &revert);
-    XSendEvent(display, focus, True, KeyPressMask, (XEvent *)&keysend);
+    // if(focus != 0)
+        // XSendEvent(display, focus, True, KeyPressMask, (XEvent *)&keysend);
+    // else {
+        XTestFakeKeyEvent(display, keysend.keycode, 0, CurrentTime);
+        XTestFakeKeyEvent(display, keysend.keycode, 1, CurrentTime);
+        // XSync(display, 0);
+    // }
     XFlush(display);
 
     int grab = XGrabKeyboard(display, XDefaultRootWindow(display), 0, GrabModeAsync, GrabModeAsync, CurrentTime);

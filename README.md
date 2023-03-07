@@ -1,5 +1,5 @@
 # XCastr
-An X rewrite of [KeyCastr](https://github.com/keycastr/keycastr) written in C.
+A rewrite of [KeyCastr](https://github.com/keycastr/keycastr) written in pure C and Xlib.
 
 ## Build
 To build XCastr from source, clone the repository and `make` in `.`.\

@@ -17,7 +17,7 @@ install: $(TARGET)
 	mkdir -p $(BIN)
 	cp -f $(TARGET) $(BIN)
 	chmod 775 $(BIN)/$(TARGET)
-	# TODO: man page
+	# TODO: man page?
 
 uninstall:
 	rm -f $(BIN)/$(TARGET)

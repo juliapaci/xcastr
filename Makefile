@@ -1,5 +1,5 @@
 # Compiler flags
-CFLAGS = -lX11 -lXext -lXtst -lXfixes -g -Wall
+CFLAGS = -lX11 -lXext -lXfixes -g -Wall
 
 # Build Target
 TARGET = XCastr
@@ -7,7 +7,7 @@ TARGET = XCastr
 # Binary location
 BIN = /usr/bin
 
-$(TARGET): $(TARGET).c WindowFunctions.c config.h
+$(TARGET): $(TARGET).c WindowFunctions.c config.h Makefile
 	gcc $(CFLAGS) $(TARGET).c -o $(TARGET)
 
 clean:

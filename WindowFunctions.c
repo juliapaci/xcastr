@@ -61,7 +61,7 @@ void ShapeWindow(Display *display, Window window, XWindowAttributes windowAttr) 
     int shapeEventBase, shapeErrorBase;
     if(!XShapeQueryExtension(display, &shapeEventBase, &shapeErrorBase)) {
         return;
-        printf("Shape library not found");
+        printf("Shape library not found\n");
     }
 
     // if the width or height of the window is smaller than the corners
@@ -106,19 +106,7 @@ void HexState(Display *display, GC gc, unsigned long colour) {
     XSetForeground(display, gc, color.pixel);
 }
 
-// void UpdateWindow(Display *display, int keycode) {
-//     int currentWidth = XTextWidth(loadedFont, text[keycode], strlen(text[keycode]));
-//     // if(keycode == 1 || offset + currentWidth + space + paddingX > windowAttributes.width - paddingX) {
-//         // XClearArea(display, window, 0, 0, windowAttributes.width, windowAttributes.height, 0);
-//         // offset = paddingX;
-//     // }
-
-//     XDrawString(display, window, gc, offset, paddingY, text[keycode], strlen(text[keycode]));
-
-//     offset += currentWidth + space;
-//     // XCopyArea(display, window, window, gc, );
-
-// }
+int keycode = -1;
 
 void callback(XPointer data, XRecordInterceptData *hook) {
     if(hook->category != XRecordFromServer) {
@@ -127,13 +115,14 @@ void callback(XPointer data, XRecordInterceptData *hook) {
     }
 
     if(hook->data[0] == KeyPress)
-        // UpdateWindow(display, hook->data[1]-8);
-        printf("%s\n", text[hook->data[1]-8]);
+        // printf("%s\n", text[hook->data[1]-8]);
+        keycode = hook->data[1] - 8;
 
     XRecordFreeData(hook);
 }
 
-Bool WindowClosed(Display *display, Window window, XEvent event) {
+Bool WindowClosed(Display *display, Window window) {
+    XEvent event;
     Atom Protocols = XInternAtom(display, "WM_PROTOCOLS", 0);
     Atom DeleteWindow = XInternAtom(display, "WM_DELETE_WINDOW", 0);
     XSetWMProtocols(display, window, &DeleteWindow, 1);

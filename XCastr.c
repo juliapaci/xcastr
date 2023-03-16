@@ -1,6 +1,8 @@
 #include "WindowFunctions.c"
 
 int main(int argc, char *argv[]) {
+    XInitThreads();
+
     Display *display = XOpenDisplay(NULL);
     int screen = DefaultScreen(display);
     Window root = XDefaultRootWindow(display), window;
@@ -47,51 +49,42 @@ int main(int argc, char *argv[]) {
     }
     XSetFont(display, gc, loadedFont->fid);
 
+    Display *recordDisplay = XOpenDisplay(NULL);
     XRecordRange *range = XRecordAllocRange();
     range->device_events.first = KeyPress;
     range->device_events.last = KeyRelease;
     XRecordClientSpec client = XRecordAllClients;
-    XRecordContext context = XRecordCreateContext(display, 0, &client, 1, &range, 1);
+    XRecordContext context = XRecordCreateContext(recordDisplay, 0, &client, 1, &range, 1);
     XFree(range);
-    if(!context) {
+    if(!context)
         printf("Unable to create context\n");
-        return -1;
-    }
 
-    XRecordEnableContext(display, context, callback, NULL);
-    XRecordProcessReplies(display);
+    XRecordEnableContextAsync(recordDisplay, context, callback, NULL);
 
     XMapRaised(display, window);
     XSync(display, 0);
 
-    XEvent keypress;
     int offset = paddingX, currentWidth;
-    int key;
 
-    while(!WindowClosed(display, window, keypress)) {
+    while(!WindowClosed(display, window)) {
+        XRecordProcessReplies(recordDisplay);
         XGetWindowAttributes(display, window, &windowAttributes);
 
         if(radius != -1) // TODO: only shape window on widht/height difference
             ShapeWindow(display, window, windowAttributes);
 
-        if(XPending(display)) {
-            XNextEvent(display, &keypress);
-            if(keypress.type == KeyPress) {
-
-                // printf("Keycode: %d\n", keypress.xkey.keycode);
-                key = keypress.xkey.keycode - 8;
-                currentWidth = XTextWidth(loadedFont, text[key], strlen(text[key]));
-                if(keypress.xkey.keycode == 9 || offset + currentWidth + space + paddingX > windowAttributes.width - paddingX) {
-                    XClearArea(display, window, 0, 0, windowAttributes.width, windowAttributes.height, 0);
-                    offset = paddingX;
-                }
-
-                XDrawString(display, window, gc, offset, paddingY, text[key], strlen(text[key]));
-
-                offset += currentWidth + space;
-                // XCopyArea(display, window, window, gc, );
-
+        if(keycode != -1) {
+            currentWidth = XTextWidth(loadedFont, text[keycode], strlen(text[keycode]));
+            if(keycode == 1 || offset + currentWidth + space + paddingX > windowAttributes.width - paddingX) {
+                XClearArea(display, window, 0, 0, windowAttributes.width, windowAttributes.height, 0);
+                offset = paddingX;
             }
+
+            XDrawString(display, window, gc, offset, paddingY, text[keycode], strlen(text[keycode]));
+
+            offset += currentWidth + space;
+            // XCopyArea(display, window, window, gc, );
+            keycode = -1;
         }
     }
 

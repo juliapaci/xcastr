@@ -3,15 +3,12 @@
 
 #include <X11/extensions/shape.h>
 #include <X11/extensions/Xfixes.h>
-#include <X11/extensions/XTest.h>
+#include <X11/extensions/record.h>
 
 #include <stdio.h>
 #include <string.h>
 
 #include "config.h"
-
-// for some reason if another event is in the same file as the current keyrpess it will crash??? why???? so its here now
-XKeyEvent keysend;
 
 Window CreateWindow(Display *display, Window root, int screen, int background, int width, int height) {
 
@@ -109,25 +106,31 @@ void HexState(Display *display, GC gc, unsigned long colour) {
     XSetForeground(display, gc, color.pixel);
 }
 
-void ReGrab(Display *display, XKeyEvent keysend) {
-    int revert;
-    Window focus;
-    XUngrabKeyboard(display, CurrentTime);
-    XGetInputFocus(display, &focus, &revert);
-    // if(focus != 0)
-        // XSendEvent(display, focus, True, KeyPressMask, (XEvent *)&keysend);
-    // else {
-        XTestFakeKeyEvent(display, keysend.keycode, 0, CurrentTime);
-        XTestFakeKeyEvent(display, keysend.keycode, 1, CurrentTime);
-        // XSync(display, 0);
-    // }
-    XFlush(display);
+// void UpdateWindow(Display *display, int keycode) {
+//     int currentWidth = XTextWidth(loadedFont, text[keycode], strlen(text[keycode]));
+//     // if(keycode == 1 || offset + currentWidth + space + paddingX > windowAttributes.width - paddingX) {
+//         // XClearArea(display, window, 0, 0, windowAttributes.width, windowAttributes.height, 0);
+//         // offset = paddingX;
+//     // }
 
-    int grab = XGrabKeyboard(display, XDefaultRootWindow(display), 0, GrabModeAsync, GrabModeAsync, CurrentTime);
-    if (grab != GrabSuccess) {
-        printf("Failed to grab keyboard: \"%d\"\n", grab);
+//     XDrawString(display, window, gc, offset, paddingY, text[keycode], strlen(text[keycode]));
+
+//     offset += currentWidth + space;
+//     // XCopyArea(display, window, window, gc, );
+
+// }
+
+void callback(XPointer data, XRecordInterceptData *hook) {
+    if(hook->category != XRecordFromServer) {
+        XRecordFreeData(hook);
         return;
     }
+
+    if(hook->data[0] == KeyPress)
+        // UpdateWindow(display, hook->data[1]-8);
+        printf("%s\n", text[hook->data[1]-8]);
+
+    XRecordFreeData(hook);
 }
 
 Bool WindowClosed(Display *display, Window window, XEvent event) {

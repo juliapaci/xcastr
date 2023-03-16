@@ -33,13 +33,8 @@ int main(int argc, char *argv[]) {
     // TODO: detect key presses from root window
     // TODO: why does a non runded window use so much cpu
     // TODO: only include headers that are corelate with user config (e.g. no need for lxfixes if window isnt intractable) orfind a way to do it without extension
-    // TODO: is XLookupString better than the text array?
     // TODO: dont rely on rarely usqed extensions
-    // TODO: maybe have to handle KeyRelease event
     // TODO: capital and other for modifier keys
-    // TODO: only use xtest for programs that dont like XSendEvent or no?
-    // TODO: Mask support (control, meta, alt, etc.) for XSendEvent
-    // TODO: implement key down functionality
 
     GC gc = XCreateGC(display, window, 0, 0);
     XSetBackground(display, gc, WhitePixel(display, 0));
@@ -52,23 +47,24 @@ int main(int argc, char *argv[]) {
     }
     XSetFont(display, gc, loadedFont->fid);
 
-    XMapRaised(display, window);
-    XSync(display, 0);
-
-    int grab = XGrabKeyboard(display, root, 0, GrabModeAsync, GrabModeAsync, CurrentTime);
-    if (grab != GrabSuccess) {
-        printf("Failed to grab keyboard: \"%d\"\n", grab);
+    XRecordRange *range = XRecordAllocRange();
+    range->device_events.first = KeyPress;
+    range->device_events.last = KeyRelease;
+    XRecordClientSpec client = XRecordAllClients;
+    XRecordContext context = XRecordCreateContext(display, 0, &client, 1, &range, 1);
+    XFree(range);
+    if(!context) {
+        printf("Unable to create context\n");
         return -1;
     }
 
-    XEvent keypress;
-    keysend.type = KeyPress;
-    keysend.display = display;
-    keysend.subwindow = None;
-    keysend.time = CurrentTime;
-    keysend.x = keysend.y = keysend.x_root = keysend.y_root = 1;
-    keysend.same_screen = 1;
+    XRecordEnableContext(display, context, callback, NULL);
+    XRecordProcessReplies(display);
 
+    XMapRaised(display, window);
+    XSync(display, 0);
+
+    XEvent keypress;
     int offset = paddingX, currentWidth;
     int key;
 
@@ -81,8 +77,6 @@ int main(int argc, char *argv[]) {
         if(XPending(display)) {
             XNextEvent(display, &keypress);
             if(keypress.type == KeyPress) {
-                keysend.keycode = keypress.xkey.keycode;
-                ReGrab(display, keysend);
 
                 // printf("Keycode: %d\n", keypress.xkey.keycode);
                 key = keypress.xkey.keycode - 8;
@@ -91,8 +85,6 @@ int main(int argc, char *argv[]) {
                     XClearArea(display, window, 0, 0, windowAttributes.width, windowAttributes.height, 0);
                     offset = paddingX;
                 }
-                if(keypress.xkey.keycode == 24)
-                    XUngrabKeyboard(display, CurrentTime);
 
                 XDrawString(display, window, gc, offset, paddingY, text[key], strlen(text[key]));
 
@@ -103,9 +95,10 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    XUngrabKeyboard(display, CurrentTime);
-    XUnmapWindow(display, window);
+    XRecordDisableContext(display, context);
+    XRecordFreeContext(display, context);
     XUnloadFont(display, loadedFont->fid);
+    XUnmapWindow(display, window);
     XDestroyWindow(display, window);
     XFlush(display);
     XCloseDisplay(display);

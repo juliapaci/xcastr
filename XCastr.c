@@ -1,6 +1,10 @@
-#include "WindowFunctions.c"
+#include <stdio.h>
+#include <string.h>
 
-int main(int argc, char *argv[]) {
+#include "config.h"
+#include "WindowFunctions.h"
+
+int main(void) {
     XInitThreads();
 
     Display *display = XOpenDisplay(NULL);
@@ -16,15 +20,13 @@ int main(int argc, char *argv[]) {
     window = CreateWindow(display, root, screen, background, width, height);
 
     XWindowAttributes windowAttributes;
-    if(radius != -1) {
+    if(radius != 0) {
         // window attribuets for size (for shape)
         XGetWindowAttributes(display, window, &windowAttributes);
         ShapeWindow(display, window, windowAttributes);
     }
 
-    if(!interactable)
-        WindowIntractable(display, window);
-    if(transparency != 255)
+    if(transparency < 255)
         TransparentWindow(display, window);
 
     // TODO: not Interactable should be able to move and resizew the window
@@ -32,9 +34,7 @@ int main(int argc, char *argv[]) {
     // TODO: Check if focus window asks for password and if it does then replace the characters with '*'
     // TODO: dynamically change window size by text, add maximum width variable
     // TODO: fade window when silent after a while (from 255/200 alpha to 0)
-    // TODO: detect key presses from root window
     // TODO: why does a non runded window use so much cpu
-    // TODO: only include headers that are corelate with user config (e.g. no need for lxfixes if window isnt intractable) orfind a way to do it without extension
     // TODO: dont rely on rarely usqed extensions
     // TODO: capital and other for modifier keys
 
@@ -44,8 +44,8 @@ int main(int argc, char *argv[]) {
 
     XFontStruct *loadedFont = XLoadQueryFont(display, font);
     if(loadedFont == NULL) {
-        printf("font: \"%p\" does not exist\n", font);
-        return -1;
+        printf("font: \"%s\" does not exist\n", font);
+        return 1;
     }
     XSetFont(display, gc, loadedFont->fid);
 
@@ -64,28 +64,34 @@ int main(int argc, char *argv[]) {
     XMapRaised(display, window);
     XSync(display, 0);
 
-    int offset = paddingX, currentWidth;
+    int offset = paddingX + space, currentWidth;
+    for(int i = 0; i < QUEUE_LENGTH; i++)
+        queue[i] = -1;
 
     while(!WindowClosed(display, window)) {
         XRecordProcessReplies(recordDisplay);
         XGetWindowAttributes(display, window, &windowAttributes);
+        if(radius == 0 || ShapeWindow(display, window, windowAttributes)) // TODO: only shape window on widht/height difference
+            break;
+        if(queue[current] == -1)
+            continue;
 
-        if(radius != -1) // TODO: only shape window on widht/height difference
-            ShapeWindow(display, window, windowAttributes);
+        char *text_item = text[queue[current]];
+        currentWidth = XTextWidth(loadedFont, text_item, strlen(text_item));
 
-        if(keycode != -1) {
-            currentWidth = XTextWidth(loadedFont, text[keycode], strlen(text[keycode]));
-            if(keycode == 1 || offset + currentWidth + space + paddingX > windowAttributes.width - paddingX) {
-                XClearArea(display, window, 0, 0, windowAttributes.width, windowAttributes.height, 0);
-                offset = paddingX;
+        if(offset + currentWidth + space + paddingX > windowAttributes.width - paddingX) { // if text x pos surpasses the window border
+            offset = paddingX+ space;
+            XClearArea(display, window, 0, 0, windowAttributes.width, windowAttributes.height, 0);
+            for(int i = 0; i < current; i++) {
+                char *iterText = text[queue[i]];
+                int newWidth = XTextWidth(loadedFont, iterText, strlen(iterText));
+                XDrawString(display, window, gc, offset += newWidth + space, paddingY, iterText, strlen(iterText));
             }
+        } else
+            XDrawString(display, window, gc, offset, paddingY, text_item, strlen(text_item));
 
-            XDrawString(display, window, gc, offset, paddingY, text[keycode], strlen(text[keycode]));
-
-            offset += currentWidth + space;
-            // XCopyArea(display, window, window, gc, );
-            keycode = -1;
-        }
+        offset += currentWidth + space;
+        current++;
     }
 
     XRecordDisableContext(display, context);

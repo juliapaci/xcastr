@@ -2,12 +2,12 @@
 #include <X11/Xatom.h>
 
 #include <X11/extensions/shape.h>
-#include <X11/extensions/Xfixes.h>
 #include <X11/extensions/record.h>
 
 #include <stdio.h>
 #include <string.h>
 
+#include "WindowFunctions.h"
 #include "config.h"
 
 Window CreateWindow(Display *display, Window root, int screen, int background, int width, int height) {
@@ -26,10 +26,15 @@ Window CreateWindow(Display *display, Window root, int screen, int background, i
     setWindowAttributes.save_under = 1;
     setWindowAttributes.colormap = colourmap;
 
+    setWindowAttributes.event_mask = 0;
     unsigned long mask = CWColormap | CWBorderPixel | CWBackPixel;
 
     // TODO: must consider window manager gaps minus from root width, heigh. also border from windowAttributes.border_width
-    Window window = XCreateWindow(display, root, DisplayWidth(display, screen)-width, DisplayHeight(display, screen)-height, width, height, 0, visualInfo.depth, InputOutput, visualInfo.visual, mask, &setWindowAttributes);
+    Window window = XCreateWindow(display, root, DisplayWidth(display, screen) - width, DisplayHeight(display, screen) - height, width, height, 0, visualInfo.depth, InputOutput, visualInfo.visual, mask, &setWindowAttributes);
+
+    // XWindowChanges stack;
+    // stack.stack_mode = Above;
+    // XConfigureWindow(display, window, CWStackMode, &stack);
 
     // Set window name
     XStoreName(display, window, "XCastr");
@@ -41,6 +46,7 @@ Window CreateWindow(Display *display, Window root, int screen, int background, i
     property[1] = XInternAtom(display, "_NET_WM_WINDOW_TYPE", 0);
     property[0] = XInternAtom(display, "_NET_WM_WINDOW_TYPE_UTILITY", 0);
     // property[0] = XInternAtom(display, "_NET_WM_WINDOW_TYPE_MODAL", 0);
+    // property[0] = XInternAtom(display, "_NET_WM_WINDOW_TYPE_DOCK", 0);
     XChangeProperty(display, window, property[1], XA_ATOM, 32, PropModeReplace, (unsigned char*) property, 1);
     // TODO: only uses one property, make it se both above and sticky
     property[2] = XInternAtom(display, "_NET_WM_STATE", 0);
@@ -50,24 +56,27 @@ Window CreateWindow(Display *display, Window root, int screen, int background, i
 
     XSetTransientForHint(display, window, window); // whats the difference between this and setting the hint manually?
     // TODO: try to raise the stacking order to always be ontop of floating windows
-    // XRaiseWindow(display, window);
+    XRaiseWindow(display, window);
+
+    // XFlush(display);
 
     return window;
 }
 
-void ShapeWindow(Display *display, Window window, XWindowAttributes windowAttr) {
+int ShapeWindow(Display *display, Window window, XWindowAttributes windowAttr) {
+
     int diameter = radius * 2;
 
     int shapeEventBase, shapeErrorBase;
     if(!XShapeQueryExtension(display, &shapeEventBase, &shapeErrorBase)) {
-        return;
         printf("Shape library not found\n");
+        return 1;
     }
 
-    // if the width or height of the window is smaller than the corners
+    // if the width or height of the window is smaller than the corners or too small
     // TODO: if window height or width is smaller then make round = 0 (dont update shape) and change update interval
-    if(windowAttr.width < diameter || windowAttr.height < diameter)
-        return;
+    if(windowAttr.width < diameter || windowAttr.height < diameter || windowAttr.width < 20 || windowAttr.height < 20)
+        return 0;
 
     int pixmap = XCreatePixmap(display, window, windowAttr.width, windowAttr.height, 1);
 
@@ -90,6 +99,8 @@ void ShapeWindow(Display *display, Window window, XWindowAttributes windowAttr) 
 
     XFreePixmap(display, pixmap);
     XFreeGC(display, gc);
+
+    return 0;
 }
 
 void HexState(Display *display, GC gc, unsigned long colour) {
@@ -106,17 +117,24 @@ void HexState(Display *display, GC gc, unsigned long colour) {
     XSetForeground(display, gc, color.pixel);
 }
 
-int keycode = -1;
-
 void callback(XPointer data, XRecordInterceptData *hook) {
     if(hook->category != XRecordFromServer) {
         XRecordFreeData(hook);
         return;
     }
 
-    if(hook->data[0] == KeyPress)
-        // printf("%s\n", text[hook->data[1]-8]);
-        keycode = hook->data[1] - 8;
+    if(current == QUEUE_LENGTH - 1) {
+        for(int i = 1; i < QUEUE_LENGTH; i++)
+            queue[i-1] = queue[i];
+        current--;
+    }
+
+    if(hook->data[0] == KeyPress) {
+        queue[current] = hook->data[1] - 8;
+#if DRY
+        printf("%s\n", text[queue[current]]);
+#endif
+    }
 
     XRecordFreeData(hook);
 }
@@ -130,14 +148,6 @@ Bool WindowClosed(Display *display, Window window) {
     if(XCheckTypedWindowEvent(display, window, ClientMessage, &event) && event.xclient.message_type == Protocols && event.xclient.data.l[0] == DeleteWindow)
         return 1;
     return 0;
-}
-
-void WindowIntractable(Display *display, Window window) {
-    // TODO: Interactable windows should be able to be managed, moved resized, etc. and only be able to pass input through also should be sticky
-    // TODO: update interactable zone on update loop
-    XserverRegion region = XFixesCreateRegion(display, NULL, 0);
-    XFixesSetWindowShapeRegion(display, window, ShapeInput, 0, 0, region);
-    XFixesDestroyRegion(display, region);
 }
 
 void TransparentWindow(Display *display, Window window) {

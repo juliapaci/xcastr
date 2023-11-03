@@ -1,14 +1,9 @@
-# Compiler flags
-CFLAGS = -lX11 -lXext -lXtst -lXfixes -g -Wall
-
-# Build Target
+CFLAGS = -lX11 -lXext -lXtst -g -Wall
 TARGET = XCastr
-
-# Binary location
 BIN = /usr/bin
 
 $(TARGET): $(TARGET).c WindowFunctions.c config.h Makefile
-	gcc $(CFLAGS) $(TARGET).c -o $(TARGET)
+	gcc $(CFLAGS) $(TARGET).c WindowFunctions.c -o $(TARGET)
 
 clean:
 	rm -f $(TARGET) $(objects)
@@ -21,3 +16,5 @@ install: $(TARGET)
 
 uninstall:
 	rm -f $(BIN)/$(TARGET)
+
+.PHONY: uninstall install clean
